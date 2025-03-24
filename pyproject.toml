@@ -27,6 +27,7 @@ voyageai = "^0.1.4"
 pillow = "^10.2.0"
 # do not remove this, it's used for indexing
 psycopg2-binary = "^2.9.9"
+langchain-qdrant = "^0.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.3.0"

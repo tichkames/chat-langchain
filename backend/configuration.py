@@ -42,17 +42,17 @@ class BaseConfiguration:
         str,
         {"__template_metadata__": {"kind": "embeddings"}},
     ] = field(
-        default="openai/text-embedding-3-small",
+        default="vertexai/text-embedding-004",
         metadata={
             "description": "Name of the embedding model to use. Must be a valid embedding model name."
         },
     )
 
     retriever_provider: Annotated[
-        Literal["weaviate"],
+        Literal["qdrant"],
         {"__template_metadata__": {"kind": "retriever"}},
     ] = field(
-        default="weaviate",
+        default="qdrant",
         metadata={"description": "The vector store provider to use for retrieval."},
     )
 

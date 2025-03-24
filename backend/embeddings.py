@@ -1,6 +1,6 @@
 from langchain_core.embeddings import Embeddings
-from langchain_openai import OpenAIEmbeddings
+from langchain_google_vertexai.embeddings import VertexAIEmbeddings
 
 
 def get_embeddings_model() -> Embeddings:
-    return OpenAIEmbeddings(model="text-embedding-3-small", chunk_size=200)
+    return VertexAIEmbeddings(model_name=settings.EMBEDDINGS_MODEL_NAME)
