@@ -5,9 +5,9 @@ import re
 from typing import Optional
 
 from bs4 import BeautifulSoup, SoupStrainer
-from langchain.document_loaders import RecursiveUrlLoader, SitemapLoader
+from langchain_community.document_loaders import RecursiveUrlLoader, SitemapLoader
 from langchain.indexes import index
-from langchain_community.indexes import MongoDocumentManager
+from langchain_community.indexes._document_manager import MongoDocumentManager
 from langchain.utils.html import PREFIXES_TO_IGNORE_REGEX, SUFFIXES_TO_IGNORE_REGEX
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_qdrant import QdrantVectorStore
@@ -123,67 +123,67 @@ def ingest_docs():
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=200)
     embedding = get_embeddings_model()
 
-    with QdrantClient(url=QDRANT_URL) as vs_client:
-        vectorstore = QdrantVectorStore.from_existing_collection(
-            url=QDRANT_URL,
-            api_key=QDRANT_API_KEY,
-            collection_name=QDRANT_COLLECTION_NAME,
-            # prefer_grpc=True,
-            embedding=embedding,
-        )
+    vs_client = QdrantClient(url=QDRANT_URL)
+    vectorstore = QdrantVectorStore.from_existing_collection(
+        url=QDRANT_URL,
+        api_key=QDRANT_API_KEY,
+        collection_name=QDRANT_COLLECTION_NAME,
+        # prefer_grpc=True,
+        embedding=embedding,
+    )
 
-        record_manager = MongoDocumentManager(
-            namespace=f"qdrant/{QDRANT_COLLECTION_NAME}",
-            mongodb_url=ATLAS_URI,
-            db_name=DBNAME,
-            collection_name="qdrant_rm",
-        )
+    record_manager = MongoDocumentManager(
+        namespace=f"qdrant/{QDRANT_COLLECTION_NAME}",
+        mongodb_url=ATLAS_URI,
+        db_name=DBNAME,
+        collection_name="qdrant_rm",
+    )
 
-        record_manager.create_schema()
+    record_manager.create_schema()
 
-        # docs_from_documentation = load_langchain_docs()
-        # logger.info(f"Loaded {len(docs_from_documentation)} docs from documentation")
-        # docs_from_api = load_api_docs()
-        # logger.info(f"Loaded {len(docs_from_api)} docs from API")
-        docs_from_fruitsandroots = load_fruitsandroots_docs()
-        logger.info(f"Loaded {len(docs_from_fruitsandroots)} docs from Fruits & Roots")
-        # docs_from_langgraph = load_langgraph_docs()
-        # logger.info(f"Loaded {len(docs_from_langgraph)} docs from LangGraph")
+    # docs_from_documentation = load_langchain_docs()
+    # logger.info(f"Loaded {len(docs_from_documentation)} docs from documentation")
+    # docs_from_api = load_api_docs()
+    # logger.info(f"Loaded {len(docs_from_api)} docs from API")
+    docs_from_fruitsandroots = load_fruitsandroots_docs()
+    logger.info(f"Loaded {len(docs_from_fruitsandroots)} docs from Fruits & Roots")
+    # docs_from_langgraph = load_langgraph_docs()
+    # logger.info(f"Loaded {len(docs_from_langgraph)} docs from LangGraph")
 
-        docs_transformed = text_splitter.split_documents(
-            # docs_from_documentation
-            # + docs_from_api
-            docs_from_fruitsandroots
-            # + docs_from_langgraph
-        )
-        docs_transformed = [
-            doc for doc in docs_transformed if len(doc.page_content) > 10
-        ]
+    docs_transformed = text_splitter.split_documents(
+        # docs_from_documentation
+        # + docs_from_api
+        docs_from_fruitsandroots
+        # + docs_from_langgraph
+    )
+    docs_transformed = [
+        doc for doc in docs_transformed if len(doc.page_content) > 10
+    ]
 
-        # We try to return 'source' and 'title' metadata when querying vector store and
-        # Qdrant will error at query time if one of the attributes is missing from a
-        # retrieved document.
-        for doc in docs_transformed:
-            if "source" not in doc.metadata:
-                doc.metadata["source"] = ""
-            if "title" not in doc.metadata:
-                doc.metadata["title"] = ""
+    # We try to return 'source' and 'title' metadata when querying vector store and
+    # Qdrant will error at query time if one of the attributes is missing from a
+    # retrieved document.
+    for doc in docs_transformed:
+        if "source" not in doc.metadata:
+            doc.metadata["source"] = ""
+        if "title" not in doc.metadata:
+            doc.metadata["title"] = ""
 
-        indexing_stats = index(
-            docs_transformed,
-            record_manager,
-            vectorstore,
-            cleanup="full",
-            source_id_key="source", #TODO: change to doc_id
-            force_update=(os.environ.get("FORCE_UPDATE") or "false").lower() == "true",
-        )
+    indexing_stats = index(
+        docs_transformed,
+        record_manager,
+        vectorstore,
+        cleanup="full",
+        source_id_key="source", #TODO: change to doc_id
+        force_update=(os.environ.get("FORCE_UPDATE") or "false").lower() == "true",
+    )
 
-        logger.info(f"Indexing stats: {indexing_stats}")
-        num_stats = vs_client.get_collection(collection_name=QDRANT_COLLECTION_NAME)
- 
-        logger.info(
-            f"VS Stats: {list(num_stats)}",
-        )
+    logger.info(f"Indexing stats: {indexing_stats}")
+    num_stats = vs_client.get_collection(collection_name=QDRANT_COLLECTION_NAME)
+
+    logger.info(
+        f"VS Stats: {list(num_stats)}",
+    )
 
 
 if __name__ == "__main__":
