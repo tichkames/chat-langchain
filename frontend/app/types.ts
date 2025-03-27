@@ -24,3 +24,38 @@ export type ModelOptions =
   | "anthropic/claude-3-5-haiku-20241022"
   | "groq/llama3-70b-8192"
   | "google_genai/gemini-pro";
+
+  export interface StreamToolCall {
+    id: string;
+    name: string;
+    args: string;
+    result?: any;
+  }
+  
+  export interface StreamMessage {
+    id: string;
+    type: 'human' | 'ai' | 'tool';
+    content: string;
+    toolContent?: StreamToolCall;
+  }
+  
+  export interface StreamEvent {
+    event: string;
+    name: string;
+    run_id: string;
+    data: {
+      run_id?: string;
+      input?: any;
+      output?: any;
+      chunk?: {
+        id?: string;
+        content?: any;
+        additional_kwargs?: Record<string, any>;
+      };
+    };
+  }
+  
+  export interface StreamStatus {
+    content: string;
+    name?: string;
+  }

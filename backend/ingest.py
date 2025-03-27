@@ -72,7 +72,7 @@ def load_langgraph_docs():
 
 def load_fruitsandroots_docs():
     return RecursiveUrlLoader(
-        url="https://www.fruitsandroots.co.za/Contact-Fruits-and-Roots/",
+        url="https://www.fruitsandroots.co.za/terms-conditions",
         max_depth=8,
         extractor=simple_extractor,
         prevent_outside=True,
@@ -174,7 +174,7 @@ def ingest_docs():
         docs_transformed,
         record_manager,
         vectorstore,
-        cleanup="full",
+        # cleanup="full",
         source_id_key="source", #TODO: change to doc_id
         force_update=(os.environ.get("FORCE_UPDATE") or "false").lower() == "true",
     )

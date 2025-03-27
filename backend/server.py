@@ -54,7 +54,7 @@ async def stream_event_response(input_chat: InputState) -> AsyncGenerator[str, N
 
     config = {
         "configurable": {
-            # "namespace": NAMESPACE,
+            "thread_id": "1",
         }
     }
 
