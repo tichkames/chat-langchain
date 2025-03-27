@@ -8,10 +8,11 @@ import copy
 from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.exception_handlers import register_exception_handlers
 from backend.input_output_types import default_serialization, EndEvent, Event
-from backend.retrieval_graph.state import InputState
+from backend.input_output_types import Request
 
 # Exposed Chains
 from backend.retrieval_graph.graph import graph as retrieval_graph
@@ -32,12 +33,12 @@ app = FastAPI()
 logger = logging.getLogger(__name__)
 
 
-async def stream_event_response(input_chat: InputState) -> AsyncGenerator[str, None]:
+async def stream_event_response(request: Request) -> AsyncGenerator[str, None]:
     """Stream events in response to an input chat."""
-    # print(f"input_chat\n{input_chat}")
+    print(f"request\n{request}")
 
     run_id = uuid.uuid4()
-    input_dict = input_chat.model_dump()
+    input_dict = request.model_dump()
 
     print(f"input_dict\n{input_dict}")
 
@@ -58,7 +59,7 @@ async def stream_event_response(input_chat: InputState) -> AsyncGenerator[str, N
         }
     }
 
-    async for data in chain.astream_events(input_dict, version="v2", config=config):
+    async for data in chain.astream_events(input_dict["messages"], version="v2", config=config):
         event_type = data["event"]
         node_name = data.get("metadata", {}).get("langgraph_node", "")
         # print(f"===>event_type: {event_type}, node_name: {node_name}")
@@ -99,7 +100,7 @@ async def redirect_root_to_docs() -> RedirectResponse:
 
 
 @app.post("/stream_events")
-async def stream_chat_events(request: InputState) -> StreamingResponse:
+async def stream_chat_events(request: Request) -> StreamingResponse:
     """Stream chat events in response to an input request."""
     return StreamingResponse(
         stream_event_response(request), media_type="text/event-stream"
@@ -117,6 +118,14 @@ async def thread_state(thread_id: str) -> list:
 
     return output_state
 
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 register_exception_handlers(app)
 

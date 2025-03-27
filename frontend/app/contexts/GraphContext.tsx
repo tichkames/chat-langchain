@@ -80,7 +80,7 @@ export function GraphProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const input = {
+    const request = {
       messages: params.messages?.filter((msg) => {
         if (msg.role !== "assistant") {
           return true;
@@ -107,7 +107,9 @@ export function GraphProvider({ children }: { children: ReactNode }) {
     //   },
     // });
 
-    const stream: AsyncGenerator<any> = client.streamEvents(input);    
+    console.log('request', request);
+
+    const stream: AsyncGenerator<any> = client.streamEvents(request);    
 
     let runId: string | undefined = undefined;
     let fullRoutingStr = "";

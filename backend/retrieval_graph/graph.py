@@ -11,6 +11,7 @@ from typing import Any, Literal, TypedDict, cast
 from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
+from langgraph.checkpoint.memory import MemorySaver
 
 from backend.retrieval_graph.configuration import AgentConfiguration
 from backend.retrieval_graph.researcher_graph.graph import graph as researcher_graph
@@ -231,6 +232,9 @@ builder.add_edge("create_research_plan", "conduct_research")
 builder.add_conditional_edges("conduct_research", check_finished)
 builder.add_edge("respond", END)
 
+# Define the checkpointer
+checkpointer = MemorySaver()
+
 # Compile into a graph object that you can invoke and deploy.
-graph = builder.compile()
+graph = builder.compile(checkpointer=checkpointer)
 graph.name = "RetrievalGraph"

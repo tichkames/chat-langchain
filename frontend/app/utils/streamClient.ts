@@ -60,7 +60,7 @@ export const streamClient = ({ url, idToken }: ClientProps) => {
       const response = await fetch(eventsUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ input: data }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
