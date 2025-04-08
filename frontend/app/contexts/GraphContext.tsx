@@ -17,9 +17,10 @@ import { useThreads } from "../hooks/useThreads";
 import { ModelOptions } from "../types";
 import { useRuns } from "../hooks/useRuns";
 import { useUser } from "../hooks/useUser";
-import { addDocumentLinks, createClient, nodeToStep } from "./utils";
+import { addDocumentLinks, nodeToStep } from "./utils";
 import { Thread } from "@langchain/langgraph-sdk";
 import { useQueryState } from "nuqs";
+import { streamClient } from "../utils/streamClient";
 
 interface GraphData {
   messages: BaseMessage[];
@@ -46,6 +47,9 @@ export interface GraphInput {
   messages?: Record<string, any>[];
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+const client = streamClient({ url: API_URL });
+
 export function GraphProvider({ children }: { children: ReactNode }) {
   const { userId } = useUser();
   const {
@@ -54,7 +58,6 @@ export function GraphProvider({ children }: { children: ReactNode }) {
     getThreadById,
     setUserThreads,
     getUserThreads,
-    createThread,
     deleteThread,
   } = useThreads(userId);
   const { toast } = useToast();
@@ -76,9 +79,8 @@ export function GraphProvider({ children }: { children: ReactNode }) {
       });
       return;
     }
-    const client = createClient();
 
-    const input = {
+    const request = {
       messages: params.messages?.filter((msg) => {
         if (msg.role !== "assistant") {
           return true;
@@ -95,15 +97,20 @@ export function GraphProvider({ children }: { children: ReactNode }) {
       }),
     };
 
-    const stream = client.runs.stream(currentThreadId, "chat", {
-      input,
-      streamMode: "events",
-      config: {
-        configurable: {
-          model_name: selectedModel,
-        },
-      },
-    });
+    // const stream = client.runs.stream(currentThreadId, "chat", {
+    //   input,
+    //   streamMode: "events",
+    //   config: {
+    //     configurable: {
+    //       model_name: selectedModel,
+    //     },
+    //   },
+    // });
+
+    console.log('request', request);
+
+    const stream: AsyncGenerator<any> = client.streamEvents(request);    
+
     let runId: string | undefined = undefined;
     let fullRoutingStr = "";
     let generatingQuestionsMessageId: string | undefined = undefined;
@@ -664,7 +671,6 @@ export function GraphProvider({ children }: { children: ReactNode }) {
       getThreadById,
       setUserThreads,
       getUserThreads,
-      createThread,
       deleteThread,
     },
     graphData: {

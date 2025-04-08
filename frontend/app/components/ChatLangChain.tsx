@@ -25,7 +25,7 @@ function ChatLangChainComponent(): React.ReactElement {
   const { toast } = useToast();
   const { threadsData, userData, graphData } = useGraphContext();
   const { userId } = userData;
-  const { getUserThreads, createThread, getThreadById } = threadsData;
+  const { getUserThreads, getThreadById } = threadsData;
   const { messages, setMessages, streamMessage, switchSelectedThread } =
     graphData;
   const [isRunning, setIsRunning] = useState(false);
@@ -75,16 +75,10 @@ function ChatLangChainComponent(): React.ReactElement {
 
     let currentThreadId = threadId;
     if (!currentThreadId) {
-      const thread = await createThread(userId);
-      if (!thread) {
-        toast({
-          title: "Error",
-          description: "Thread creation failed.",
-        });
-        return;
-      }
-      setThreadId(thread.thread_id);
-      currentThreadId = thread.thread_id;
+      const thread_id = uuidv4();
+
+      setThreadId(thread_id);
+      currentThreadId = thread_id;
     }
 
     try {

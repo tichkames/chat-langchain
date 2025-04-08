@@ -1,12 +1,3 @@
-import { Client } from "@langchain/langgraph-sdk";
-
-export function createClient() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
-  return new Client({
-    apiUrl,
-  });
-}
-
 export function nodeToStep(node: string) {
   switch (node) {
     case "analyze_and_route_query":

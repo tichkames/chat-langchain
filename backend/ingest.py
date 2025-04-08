@@ -3,6 +3,7 @@ import logging
 import os
 import re
 from typing import Optional
+import datetime
 
 from bs4 import BeautifulSoup, SoupStrainer
 from langchain_community.document_loaders import RecursiveUrlLoader, SitemapLoader
@@ -71,7 +72,7 @@ def load_langgraph_docs():
 
 def load_fruitsandroots_docs():
     return RecursiveUrlLoader(
-        url="https://www.fruitsandroots.co.za/Contact-Fruits-and-Roots/",
+        url="https://www.fruitsandroots.co.za/terms-conditions",
         max_depth=8,
         extractor=simple_extractor,
         prevent_outside=True,
@@ -132,7 +133,7 @@ def ingest_docs():
         embedding=embedding,
     )
 
-    record_manager = MongoDocumentManager(
+    record_manager = CustomMongoDocumentManager(
         namespace=f"qdrant/{QDRANT_COLLECTION_NAME}",
         mongodb_url=ATLAS_URI,
         db_name=DBNAME,
@@ -173,7 +174,7 @@ def ingest_docs():
         docs_transformed,
         record_manager,
         vectorstore,
-        cleanup="full",
+        # cleanup="full",
         source_id_key="source", #TODO: change to doc_id
         force_update=(os.environ.get("FORCE_UPDATE") or "false").lower() == "true",
     )
@@ -181,10 +182,13 @@ def ingest_docs():
     logger.info(f"Indexing stats: {indexing_stats}")
     num_stats = vs_client.get_collection(collection_name=QDRANT_COLLECTION_NAME)
 
-    logger.info(
-        f"VS Stats: {list(num_stats)}",
-    )
+    # logger.info(
+    #     f"VS Stats: {list(num_stats)}",
+    # )
 
+class CustomMongoDocumentManager(MongoDocumentManager):
+    def get_time(self):
+        return datetime.datetime.now(datetime.timezone.utc)  # Alternative to hostInfo
 
 if __name__ == "__main__":
     ingest_docs()
