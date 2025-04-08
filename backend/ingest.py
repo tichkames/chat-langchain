@@ -252,5 +252,53 @@ def ingest_docs():
 # print(docs[-1:])
 # len(docs)
 
+# def embed_docs(docs: list[Document], namespace: str = None, owner_id: str = None):
+# Update metadata
+# for doc in docs:
+#     doc.metadata = {**doc.metadata,
+# "namespace": namespace,
+#                     "owner_id": owner_id,
+#                     }
+
+# index_chunks(docs)
+
+# Requires Chunking
+# def index_custom_doc(text: str, namespace: str, doc_id: str, owner_id: str, source_url: str):
+#     splits = chunk_text(text)
+
+#     docs = [
+#         Document(
+#             page_content=split.page_content,
+#             metadata={
+#                 METADATA_NS: namespace,
+#                 METADATA_ID_KEY: doc_id,
+#                 METADATA_OWNER_KEY: owner_id,
+#                 METADATA_SOURCE_KEY: source_url,
+#                 **split.metadata,
+#             },
+#         )
+#         for split in splits
+#     ]
+
+#     # print(docs[0:5])
+#     index_chunks(docs)
+
+# def index_chunks(chunks: list[Document]) -> list[str]:
+#     """Store chunks as embeddings in the Vector Search index"""
+
+#     if settings.RUN_INGESTION:
+#         uuids = [str(uuid4()) for _ in range(len(chunks))]
+
+#         ids = _vector_store.add_documents(documents=chunks, ids=uuids)
+
+#         if ids:
+#             logger.info(f"Added {len(ids)} new embedding(s).")
+
+#             return ids
+#     else:
+#         print("Skipping ingestion. Enable `RUN_INGESTION` flag")
+
+#     return []
+
 if __name__ == "__main__":
     ingest_docs()
