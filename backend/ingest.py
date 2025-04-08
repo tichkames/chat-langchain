@@ -262,6 +262,11 @@ def ingest_docs():
 
 # index_chunks(docs)
 
+# METADATA_NS = "namespace"
+# METADATA_ID_KEY = "doc_id"
+# METADATA_OWNER_KEY = "owner_id"
+# METADATA_SOURCE_KEY = "source"
+
 # Requires Chunking
 # def index_custom_doc(text: str, namespace: str, doc_id: str, owner_id: str, source_url: str):
 #     splits = chunk_text(text)
