@@ -1,12 +1,18 @@
 """Load html from files, clean up, split, ingest into Qdrant."""
+
 import logging
 import os
 import re
 from typing import Optional
-import datetime
 
 from bs4 import BeautifulSoup, SoupStrainer
-from langchain_community.document_loaders import RecursiveUrlLoader, SitemapLoader
+from langchain_core.documents import Document
+from langchain_community.document_loaders import (
+    RecursiveUrlLoader,
+    SitemapLoader,
+    JSONLoader,
+)
+from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain.indexes import index
 from langchain_community.indexes._document_manager import MongoDocumentManager
 from langchain.utils.html import PREFIXES_TO_IGNORE_REGEX, SUFFIXES_TO_IGNORE_REGEX
@@ -14,12 +20,22 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
-from backend.constants import QDRANT_COLLECTION_NAME, QDRANT_URL, QDRANT_API_KEY, ATLAS_URI, DBNAME
+from backend.constants import (
+    QDRANT_COLLECTION_NAME,
+    QDRANT_URL,
+    QDRANT_API_KEY,
+    ATLAS_URI,
+    DBNAME,
+    DOCS_PATH,
+)
 from backend.embeddings import get_embeddings_model
 from backend.parser import langchain_docs_extractor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# Define the metadata extraction functions
 
 
 def metadata_extractor(
@@ -41,6 +57,35 @@ def metadata_extractor(
         "language": html_element.get("lang", "") if html_element else "",
         **meta,
     }
+
+
+def restaurant_metadata_func(record: dict, metadata: dict) -> dict:
+    metadata["namespace"] = record.get("namespace")
+    metadata["owner_id"] = record.get("owner_id")
+    metadata["doc_id"] = record.get("doc_id")
+    metadata["city"] = record.get("city")
+    metadata["location"] = record.get("location")
+    metadata["status"] = record.get("status")
+
+    return metadata
+
+
+def load_restaurant_docs(file_path: str) -> list[Document]:
+    loader = JSONLoader(
+        file_path=file_path,
+        jq_schema=".",
+        content_key="text",
+        json_lines=True,
+        metadata_func=restaurant_metadata_func,
+    )
+
+    return loader.load()
+
+
+def load_csv_docs(file_path: str) -> list[Document]:
+    loader = CSVLoader(file_path=file_path)
+
+    return loader.load()
 
 
 def load_langchain_docs():
@@ -72,7 +117,7 @@ def load_langgraph_docs():
 
 def load_fruitsandroots_docs():
     return RecursiveUrlLoader(
-        url="https://www.fruitsandroots.co.za/terms-conditions",
+        url="https://www.fruitsandroots.co.za/Contact-Fruits-and-Roots/",
         max_depth=8,
         extractor=simple_extractor,
         prevent_outside=True,
@@ -120,8 +165,15 @@ def load_api_docs():
     ).load()
 
 
+class CustomMongoDocumentManager(MongoDocumentManager):
+    def get_time(self):
+        # Alternative to avoid hostInfo on MongoDB Atlas
+        from datetime import datetime
+
+        return datetime.now()
+
+
 def ingest_docs():
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=200)
     embedding = get_embeddings_model()
 
     vs_client = QdrantClient(url=QDRANT_URL)
@@ -142,53 +194,63 @@ def ingest_docs():
 
     record_manager.create_schema()
 
-    # docs_from_documentation = load_langchain_docs()
-    # logger.info(f"Loaded {len(docs_from_documentation)} docs from documentation")
-    # docs_from_api = load_api_docs()
-    # logger.info(f"Loaded {len(docs_from_api)} docs from API")
-    docs_from_fruitsandroots = load_fruitsandroots_docs()
-    logger.info(f"Loaded {len(docs_from_fruitsandroots)} docs from Fruits & Roots")
-    # docs_from_langgraph = load_langgraph_docs()
-    # logger.info(f"Loaded {len(docs_from_langgraph)} docs from LangGraph")
+    docs = load_restaurant_docs(DOCS_PATH)
 
-    docs_transformed = text_splitter.split_documents(
-        # docs_from_documentation
-        # + docs_from_api
-        docs_from_fruitsandroots
-        # + docs_from_langgraph
-    )
-    docs_transformed = [
-        doc for doc in docs_transformed if len(doc.page_content) > 10
-    ]
+    logger.info(f"Loaded {len(docs)} docs from {DOCS_PATH}")
+
+    # docs_from_fruitsandroots = load_fruitsandroots_docs()
+    # logger.info(f"Loaded {len(docs_from_fruitsandroots)} docs from Fruits & Roots")
+
+    # text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=200)
+
+    # docs_transformed = text_splitter.split_documents(
+    #     # docs_from_documentation
+    #     # + docs_from_api
+    #     docs_from_fruitsandroots
+    #     # + docs_from_langgraph
+    # )
+    # docs_transformed = [doc for doc in docs_transformed if len(doc.page_content) > 10]
 
     # We try to return 'source' and 'title' metadata when querying vector store and
     # Qdrant will error at query time if one of the attributes is missing from a
     # retrieved document.
-    for doc in docs_transformed:
+    for doc in docs:
         if "source" not in doc.metadata:
             doc.metadata["source"] = ""
         if "title" not in doc.metadata:
             doc.metadata["title"] = ""
 
     indexing_stats = index(
-        docs_transformed,
+        docs,
         record_manager,
         vectorstore,
-        # cleanup="full",
-        source_id_key="source", #TODO: change to doc_id
+        cleanup="full",
+        source_id_key="source",
         force_update=(os.environ.get("FORCE_UPDATE") or "false").lower() == "true",
     )
 
     logger.info(f"Indexing stats: {indexing_stats}")
+
     num_stats = vs_client.get_collection(collection_name=QDRANT_COLLECTION_NAME)
+    logger.info(
+        f"VS Stats: {list(num_stats)}",
+    )
 
-    # logger.info(
-    #     f"VS Stats: {list(num_stats)}",
-    # )
 
-class CustomMongoDocumentManager(MongoDocumentManager):
-    def get_time(self):
-        return datetime.datetime.now(datetime.timezone.utc)  # Alternative to hostInfo
+# from app.utils.doc_utils import load_csv_docs, load_json_docs
+
+# dir = "/home/exokames/repository/exo-genai/data/"
+# # path = "catalog-export.csv"
+# # path = "restaurants.jsonl"
+# path = "products.jsonl"
+
+# # Load from CSV
+# # docs = load_csv_docs(f"{dir}{path}")
+
+# # Load from JSON Lines File
+# docs = load_json_docs(f"{dir}{path}")
+# print(docs[-1:])
+# len(docs)
 
 if __name__ == "__main__":
     ingest_docs()
