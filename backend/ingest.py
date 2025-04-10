@@ -26,7 +26,8 @@ from backend.constants import (
     QDRANT_API_KEY,
     ATLAS_URI,
     DBNAME,
-    DOCS_PATH,
+    RESTAURANT_DOCS_PATH,
+    PRODUCT_DOCS_PATH,
 )
 from backend.embeddings import get_embeddings_model
 from backend.parser import langchain_docs_extractor
@@ -70,6 +71,16 @@ def restaurant_metadata_func(record: dict, metadata: dict) -> dict:
     return metadata
 
 
+def product_metadata_func(record: dict, metadata: dict) -> dict:
+    metadata["namespace"] = record.get("namespace")
+    metadata["owner_id"] = record.get("owner_id")
+    metadata["doc_id"] = record.get("doc_id")
+    metadata["status"] = record.get("status")
+    metadata["upsell_target"] = record.get("upsell_target")
+
+    return metadata
+
+
 def load_restaurant_docs(file_path: str) -> list[Document]:
     loader = JSONLoader(
         file_path=file_path,
@@ -77,6 +88,18 @@ def load_restaurant_docs(file_path: str) -> list[Document]:
         content_key="text",
         json_lines=True,
         metadata_func=restaurant_metadata_func,
+    )
+
+    return loader.load()
+
+
+def load_product_docs(file_path: str) -> list[Document]:
+    loader = JSONLoader(
+        file_path=file_path,
+        jq_schema=".",
+        content_key="text",
+        json_lines=True,
+        metadata_func=product_metadata_func,
     )
 
     return loader.load()
@@ -194,9 +217,11 @@ def ingest_docs():
 
     record_manager.create_schema()
 
-    docs = load_restaurant_docs(DOCS_PATH)
+    # docs = load_restaurant_docs(RESTAURANT_DOCS_PATH)
+    docs = load_product_docs(PRODUCT_DOCS_PATH)
 
-    logger.info(f"Loaded {len(docs)} docs from {DOCS_PATH}")
+    # logger.info(f"Loaded {len(docs)} restaurant docs from {RESTAURANT_DOCS_PATH}")
+    logger.info(f"Loaded {len(docs)} product docs from {PRODUCT_DOCS_PATH}")
 
     # docs_from_fruitsandroots = load_fruitsandroots_docs()
     # logger.info(f"Loaded {len(docs_from_fruitsandroots)} docs from Fruits & Roots")
@@ -224,7 +249,7 @@ def ingest_docs():
         docs,
         record_manager,
         vectorstore,
-        cleanup="full",
+        cleanup="incremental",
         source_id_key="source",
         force_update=(os.environ.get("FORCE_UPDATE") or "false").lower() == "true",
     )
