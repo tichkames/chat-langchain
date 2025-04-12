@@ -67,6 +67,7 @@ def restaurant_metadata_func(record: dict, metadata: dict) -> dict:
     metadata["city"] = record.get("city")
     metadata["location"] = record.get("location")
     metadata["status"] = record.get("status")
+    metadata["service_types"] = record.get("service_types")
 
     return metadata
 
@@ -217,11 +218,11 @@ def ingest_docs():
 
     record_manager.create_schema()
 
-    # docs = load_restaurant_docs(RESTAURANT_DOCS_PATH)
-    docs = load_product_docs(PRODUCT_DOCS_PATH)
+    docs = load_restaurant_docs(RESTAURANT_DOCS_PATH)
+    # docs = load_product_docs(PRODUCT_DOCS_PATH)
 
-    # logger.info(f"Loaded {len(docs)} restaurant docs from {RESTAURANT_DOCS_PATH}")
-    logger.info(f"Loaded {len(docs)} product docs from {PRODUCT_DOCS_PATH}")
+    logger.info(f"Loaded {len(docs)} restaurant docs from {RESTAURANT_DOCS_PATH}")
+    # logger.info(f"Loaded {len(docs)} product docs from {PRODUCT_DOCS_PATH}")
 
     # docs_from_fruitsandroots = load_fruitsandroots_docs()
     # logger.info(f"Loaded {len(docs_from_fruitsandroots)} docs from Fruits & Roots")
@@ -254,12 +255,10 @@ def ingest_docs():
         force_update=(os.environ.get("FORCE_UPDATE") or "false").lower() == "true",
     )
 
-    logger.info(f"Indexing stats: {indexing_stats}")
+    logger.info(f"Indexing Stats: {indexing_stats}")
 
-    num_stats = vs_client.get_collection(collection_name=QDRANT_COLLECTION_NAME)
-    logger.info(
-        f"VS Stats: {list(num_stats)}",
-    )
+    vs_stats = vs_client.get_collection(collection_name=QDRANT_COLLECTION_NAME)
+    logger.info(f"VS Stats: {vs_stats.points_count}")
 
 
 # from app.utils.doc_utils import load_csv_docs, load_json_docs
