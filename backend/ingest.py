@@ -200,7 +200,7 @@ class CustomMongoDocumentManager(MongoDocumentManager):
 def ingest_docs():
     embedding = get_embeddings_model()
 
-    vs_client = QdrantClient(url=QDRANT_URL)
+    vs_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
     vectorstore = QdrantVectorStore.from_existing_collection(
         url=QDRANT_URL,
         api_key=QDRANT_API_KEY,
@@ -258,7 +258,7 @@ def ingest_docs():
     logger.info(f"Indexing Stats: {indexing_stats}")
 
     vs_stats = vs_client.get_collection(collection_name=QDRANT_COLLECTION_NAME)
-    logger.info(f"VS Stats: {vs_stats.points_count}")
+    logger.info(f"Collection Stats (points_count): {vs_stats.points_count}")
 
 
 # from app.utils.doc_utils import load_csv_docs, load_json_docs
