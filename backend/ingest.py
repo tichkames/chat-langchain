@@ -221,8 +221,7 @@ def ingest_docs():
     docs = load_restaurant_docs(RESTAURANT_DOCS_PATH)
     # docs = load_product_docs(PRODUCT_DOCS_PATH)
 
-    logger.info(f"Loaded {len(docs)} restaurant docs from {RESTAURANT_DOCS_PATH}")
-    # logger.info(f"Loaded {len(docs)} product docs from {PRODUCT_DOCS_PATH}")
+    logger.info(f"Loaded {len(docs)} restaurant docs")
 
     # docs_from_fruitsandroots = load_fruitsandroots_docs()
     # logger.info(f"Loaded {len(docs_from_fruitsandroots)} docs from Fruits & Roots")
