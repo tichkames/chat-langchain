@@ -260,31 +260,6 @@ def ingest_docs():
     logger.info(f"Collection Stats (points_count): {vs_stats.points_count}")
 
 
-# from app.utils.doc_utils import load_csv_docs, load_json_docs
-
-# dir = "/home/exokames/repository/exo-genai/data/"
-# # path = "catalog-export.csv"
-# # path = "restaurants.jsonl"
-# path = "products.jsonl"
-
-# # Load from CSV
-# # docs = load_csv_docs(f"{dir}{path}")
-
-# # Load from JSON Lines File
-# docs = load_json_docs(f"{dir}{path}")
-# print(docs[-1:])
-# len(docs)
-
-# def embed_docs(docs: list[Document], namespace: str = None, owner_id: str = None):
-# Update metadata
-# for doc in docs:
-#     doc.metadata = {**doc.metadata,
-# "namespace": namespace,
-#                     "owner_id": owner_id,
-#                     }
-
-# index_chunks(docs)
-
 # METADATA_NS = "namespace"
 # METADATA_ID_KEY = "doc_id"
 # METADATA_OWNER_KEY = "owner_id"
