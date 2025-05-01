@@ -20,7 +20,7 @@ import { useUser } from "../hooks/useUser";
 import { addDocumentLinks, nodeToStep } from "./utils";
 import { Thread } from "@langchain/langgraph-sdk";
 import { useQueryState } from "nuqs";
-import { streamClient } from "../utils/streamClient";
+import { streamEvents } from "../utils/streamChatClient";
 
 interface GraphData {
   runId: string;
@@ -49,8 +49,7 @@ export interface GraphInput {
   messages?: Record<string, any>[];
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
-const client = streamClient({ url: API_URL });
+const AI_URL = 'http://localhost:8000/api/v1';
 
 export function GraphProvider({ children }: { children: ReactNode }) {
   const { userId } = useUser();
@@ -104,17 +103,34 @@ export function GraphProvider({ children }: { children: ReactNode }) {
     // Clear the runId from the state
     setRunId("");
 
-    const stream = client.runs.stream(currentThreadId, "chat", {
-      input,
-      streamMode: "events",
-      config: {
-        configurable: {
-          query_model: selectedModel,
-          response_model: selectedModel,
-        },
-      },
-    });
+    // const stream = client.runs.stream(currentThreadId, "chat", {
+    //   input,
+    //   streamMode: "events",
+    //   config: {
+    //     configurable: {
+    //       query_model: selectedModel,
+    //       response_model: selectedModel,
+    //     },
+    //   },
+    // });
 
+    console.log('request', request);
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    };
+
+    // if (idToken) {
+    //   headers.Authorization = `Bearer ${idToken}`;
+    // }
+
+    const response = await fetch(AI_URL + '/chatbot/chat/stream', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(request),
+    });
+   
     setIsStreaming(true);
 
     try {
@@ -125,7 +141,9 @@ export function GraphProvider({ children }: { children: ReactNode }) {
       const progressAIMessageId = uuidv4();
       let hasProgressBeenSet = false;
 
-      for await (const chunk of stream) {
+      for await (const chunk of streamEvents(response)) {
+        console.log("chunk", chunk);
+        
         if (!runId && chunk.data?.metadata?.run_id) {
           _runId = chunk.data.metadata.run_id;
           setRunId(_runId ?? "");
