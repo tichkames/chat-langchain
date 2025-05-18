@@ -33,16 +33,16 @@ def make_text_encoder(model: str) -> Embeddings:
 def make_qdrant_retriever(
     configuration: BaseConfiguration, embedding_model: Embeddings
 ) -> Iterator[BaseRetriever]:
-    with QdrantClient(url=QDRANT_URL) as vs_client:
-        store = QdrantVectorStore.from_existing_collection(
-            url=QDRANT_URL,
-            api_key=QDRANT_API_KEY,
-            collection_name=QDRANT_COLLECTION_NAME,
-            # prefer_grpc=True,
-            embedding=get_embeddings_model(),
-        )
-        search_kwargs = {**configuration.search_kwargs, "return_uuids": True}
-        yield store.as_retriever(search_kwargs=search_kwargs)
+    # with QdrantClient(url=QDRANT_URL) as vs_client:
+    store = QdrantVectorStore.from_existing_collection(
+        url=QDRANT_URL,
+        api_key=QDRANT_API_KEY,
+        collection_name=QDRANT_COLLECTION_NAME,
+        # prefer_grpc=True,
+        embedding=get_embeddings_model(),
+    )
+    search_kwargs = {**configuration.search_kwargs, "return_uuids": True}
+    yield store.as_retriever(search_kwargs=search_kwargs)
 
 
 @contextmanager

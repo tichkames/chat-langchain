@@ -198,15 +198,13 @@ class CustomMongoDocumentManager(MongoDocumentManager):
 
 
 def ingest_docs():
-    embedding = get_embeddings_model()
-
     vs_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
     vectorstore = QdrantVectorStore.from_existing_collection(
         url=QDRANT_URL,
         api_key=QDRANT_API_KEY,
         collection_name=QDRANT_COLLECTION_NAME,
         # prefer_grpc=True,
-        embedding=embedding,
+        embedding=get_embeddings_model(),
     )
 
     record_manager = CustomMongoDocumentManager(
