@@ -20,7 +20,7 @@ import { useUser } from "../hooks/useUser";
 import { addDocumentLinks, nodeToStep } from "./utils";
 import { Thread } from "@langchain/langgraph-sdk";
 import { useQueryState } from "nuqs";
-import { streamClient } from "../utils/streamClient";
+import { streamEvents } from "../utils/streamChatClient";
 
 interface GraphData {
   runId: string;
@@ -49,8 +49,7 @@ export interface GraphInput {
   messages?: Record<string, any>[];
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
-const client = streamClient({ url: API_URL });
+const AI_URL = 'http://localhost:8000/api/v1';
 
 export function GraphProvider({ children }: { children: ReactNode }) {
   const { userId } = useUser();
@@ -104,17 +103,23 @@ export function GraphProvider({ children }: { children: ReactNode }) {
     // Clear the runId from the state
     setRunId("");
 
-    const stream = client.runs.stream(currentThreadId, "chat", {
-      input,
-      streamMode: "events",
-      config: {
-        configurable: {
-          query_model: selectedModel,
-          response_model: selectedModel,
-        },
-      },
-    });
+    console.log('request', request);
 
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    };
+
+    // if (idToken) {
+    //   headers.Authorization = `Bearer ${idToken}`;
+    // }
+
+    const response = await fetch(AI_URL + '/chatbot/chat/stream', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(request),
+    });
+   
     setIsStreaming(true);
 
     try {
@@ -125,9 +130,11 @@ export function GraphProvider({ children }: { children: ReactNode }) {
       const progressAIMessageId = uuidv4();
       let hasProgressBeenSet = false;
 
-      for await (const chunk of stream) {
-        if (!runId && chunk.data?.metadata?.run_id) {
-          _runId = chunk.data.metadata.run_id;
+      for await (const chunk of streamEvents(response)) {
+        console.log("chunk", chunk);
+        
+        if (!runId && chunk.data.content?.run_id) {
+          _runId = chunk.data.content.run_id;
           setRunId(_runId ?? "");
         }
         if (!hasProgressBeenSet) {
@@ -146,7 +153,7 @@ export function GraphProvider({ children }: { children: ReactNode }) {
                     {
                       name: "progress",
                       args: {
-                        step: nodeToStep(chunk?.data?.metadata?.langgraph_node),
+                        step: nodeToStep(chunk.data.content?.metadata?.langgraph_node),
                       },
                     },
                   ],
@@ -164,7 +171,7 @@ export function GraphProvider({ children }: { children: ReactNode }) {
                   {
                     name: "progress",
                     args: {
-                      step: nodeToStep(chunk?.data?.metadata?.langgraph_node),
+                      step: nodeToStep(chunk.data.content?.metadata?.langgraph_node),
                     },
                   },
                 ],
@@ -175,8 +182,8 @@ export function GraphProvider({ children }: { children: ReactNode }) {
           hasProgressBeenSet = true;
         }
 
-        if (chunk.data.event === "on_chain_start") {
-          const node = chunk?.data?.metadata?.langgraph_node;
+        if (chunk.data.content.event === "on_chain_start") {
+          const node = chunk.data.content?.metadata?.langgraph_node;
           if (
             [
               "analyze_and_route_query",
@@ -224,7 +231,7 @@ export function GraphProvider({ children }: { children: ReactNode }) {
                   {
                     name: "selected_documents",
                     args: {
-                      documents: chunk.data.data.input.documents,
+                      documents: chunk.data.content.data.input.documents,
                     },
                   },
                 ],
@@ -234,11 +241,11 @@ export function GraphProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        if (chunk.data.event === "on_chat_model_stream") {
+        if (chunk.data.content.event === "on_chat_model_stream") {
           if (
-            chunk.data.metadata.langgraph_node === "analyze_and_route_query"
+            chunk.data.content.metadata.langgraph_node === "analyze_and_route_query"
           ) {
-            const message = chunk.data.data.chunk;
+            const message = chunk.data.content.data.chunk;
             const toolCallChunk = message.tool_call_chunks?.[0];
             fullRoutingStr += toolCallChunk?.args || "";
             try {
@@ -286,9 +293,9 @@ export function GraphProvider({ children }: { children: ReactNode }) {
           }
 
           if (
-            chunk.data.metadata.langgraph_node === "respond_to_general_query"
+            chunk.data.content.metadata.langgraph_node === "respond_to_general_query" || chunk.data.content.metadata.langgraph_node === "chat"
           ) {
-            const message = chunk.data.data.chunk;
+            const message = chunk.data.content.data.chunk;
             setMessages((prevMessages) => {
               const existingMessageIndex = prevMessages.findIndex(
                 (msg) => msg.id === message.id,
@@ -314,8 +321,8 @@ export function GraphProvider({ children }: { children: ReactNode }) {
             });
           }
 
-          if (chunk.data.metadata.langgraph_node === "create_research_plan") {
-            const message = chunk.data.data.chunk;
+          if (chunk.data.content.metadata.langgraph_node === "create_research_plan") {
+            const message = chunk.data.content.data.chunk;
             generatingQuestionsMessageId = message.id;
             const toolCallChunk = message.tool_call_chunks?.[0];
             fullGeneratingQuestionsStr += toolCallChunk?.args || "";
@@ -390,8 +397,8 @@ export function GraphProvider({ children }: { children: ReactNode }) {
             }
           }
 
-          if (chunk.data.metadata.langgraph_node === "respond") {
-            const message = chunk.data.data.chunk;
+          if (chunk.data.content.metadata.langgraph_node === "respond") {
+            const message = chunk.data.content.data.chunk;
             setMessages((prevMessages) => {
               const existingMessageIndex = prevMessages.findIndex(
                 (msg) => msg.id === message.id,
@@ -427,12 +434,12 @@ export function GraphProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        if (chunk.data.event === "on_chain_end") {
+        if (chunk.data.content.event === "on_chain_end") {
           if (
-            chunk.data.metadata.langgraph_node === "conduct_research" &&
-            chunk.data.data?.output &&
-            typeof chunk.data.data.output === "object" &&
-            "question" in chunk.data.data.output
+            chunk.data.content.metadata.langgraph_node === "conduct_research" &&
+            chunk.data.content.data?.output &&
+            typeof chunk.data.content.data.output === "object" &&
+            "question" in chunk.data.content.data.output
           ) {
             setMessages((prevMessages) => {
               const foundIndex = prevMessages.findIndex(
@@ -451,11 +458,11 @@ export function GraphProvider({ children }: { children: ReactNode }) {
                     if (toolCall.name === "generating_questions") {
                       const updatedQuestions = toolCall.args.questions.map(
                         (q: any) => {
-                          if (q.question === chunk.data.data.output.question) {
+                          if (q.question === chunk.data.content.data.output.question) {
                             return {
                               ...q,
-                              queries: chunk.data.data.output.queries,
-                              documents: chunk.data.data.output.documents,
+                              queries: chunk.data.content.data.output.queries,
+                              documents: chunk.data.content.data.output.documents,
                             };
                           }
                           return q;
@@ -496,7 +503,7 @@ export function GraphProvider({ children }: { children: ReactNode }) {
               "respond",
               "respond_to_general_query",
               "ask_for_more_info",
-            ].includes(chunk?.data?.metadata?.langgraph_node)
+            ].includes(chunk.data.content?.metadata?.langgraph_node)
           ) {
             setMessages((prevMessages) => {
               const existingMessageIndex = prevMessages.findIndex(
@@ -529,9 +536,9 @@ export function GraphProvider({ children }: { children: ReactNode }) {
             });
           }
 
-          if (chunk.data.metadata.langgraph_node === "respond") {
-            const inputDocuments = chunk.data.data.input.documents;
-            const message = chunk.data.data.output.messages[0];
+          if (chunk.data.content.metadata.langgraph_node === "respond") {
+            const inputDocuments = chunk.data.content.data.input.documents;
+            const message = chunk.data.content.data.output.messages[0];
             setMessages((prevMessages) => {
               const existingMessageIndex = prevMessages.findIndex(
                 (pMsg) => pMsg.id === message.id,

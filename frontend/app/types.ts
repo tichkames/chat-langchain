@@ -22,41 +22,39 @@ export type Feedback = {
 export type ModelOptions =
   | "openai/gpt-4.1-mini"
   | "anthropic/claude-3-5-haiku-20241022"
-  | "groq/llama3-70b-8192"
-  | "google_genai/gemini-pro"
   | "google_genai/gemini-2.0-flash";
 
-  export interface StreamToolCall {
-    id: string;
-    name: string;
-    args: string;
-    result?: any;
-  }
-  
-  export interface StreamMessage {
-    id: string;
-    type: 'human' | 'ai' | 'tool';
-    content: string;
-    toolContent?: StreamToolCall;
-  }
-  
-  export interface StreamEvent {
-    event: string;
-    name: string;
-    run_id: string;
-    data: {
-      run_id?: string;
-      input?: any;
-      output?: any;
-      chunk?: {
-        id?: string;
-        content?: any;
-        additional_kwargs?: Record<string, any>;
-      };
+export interface StreamToolCall {
+  id: string;
+  name: string;
+  args: string;
+  result?: any;
+}
+
+export interface StreamMessage {
+  id: string;
+  type: 'human' | 'ai' | 'tool';
+  content: string;
+  toolContent?: StreamToolCall;
+}
+
+export interface StreamEvent {
+  event: string;
+  name: string;
+  run_id: string;
+  data: {
+    run_id?: string;
+    input?: any;
+    output?: any;
+    chunk?: {
+      id?: string;
+      content?: any;
+      additional_kwargs?: Record<string, any>;
     };
-  }
-  
-  export interface StreamStatus {
-    content: string;
-    name?: string;
-  }
+  };
+}
+
+export interface StreamStatus {
+  content: string;
+  name?: string;
+}

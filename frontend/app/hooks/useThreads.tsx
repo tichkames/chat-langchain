@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 import { useQueryState } from "nuqs";
 
+const AI_URL = 'http://localhost:8000/api/v1';
+
 export function useThreads(userId: string | undefined) {
   const [isUserThreadsLoading, setIsUserThreadsLoading] = useState(false);
   const [userThreads, setUserThreads] = useState<any[]>([]);
@@ -17,7 +19,7 @@ export function useThreads(userId: string | undefined) {
   const getUserThreads = async (id: string) => {
     setIsUserThreadsLoading(true);
     try {
-      const data = await fetch(`http://localhost:8000/threads/${id}`);
+      const data = await fetch(`${AI_URL}/chatbot/messages`);
       const userThreads = await data.json();
       console.log('userThreads', userThreads);
 
@@ -35,7 +37,7 @@ export function useThreads(userId: string | undefined) {
   };
 
   const getThreadById = async (id: string) => {
-    const data = await fetch(`http://localhost:8001/threads/${id}`);
+    const data = await fetch(`${AI_URL}/threads/${id}`);
     const state = await data.json();
     console.log('state', state);
   
